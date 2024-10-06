@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Usuários Pendentes</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="exibir.css">
+    <link href="https://fonts.googleapis.com/css2?family=Domo+de+Ferro:wght@400&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #333; /* Fundo escuro */
+            color: white; /* Texto branco por padrão */
+            font-family: 'Domo de Ferro', sans-serif;
+        }
+        .status-icon {
+            margin-right: 5px; /* Espaçamento entre o ícone e o texto */
+        }
+        .approved {
+            color: green; /* Cor verde para "Aprovados" */
+        }
+        .rejected {
+            color: red; /* Cor vermelha para "Reprovados" */
+        }
+        .pending {
+            color: orange; /* Cor laranja para "Pendente" */
+            display: flex; 
+            align-items: center; 
+        }
+        .loading {
+            animation: spin 1s linear infinite; /* Animação de carregamento */
+            margin-left: 5px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .button {
+            padding: 10px;
+            margin: 5px;
+            border: none;
+            cursor: pointer;
+            color: white; /* Texto branco */
+            border-radius: 5px; /* Bordas arredondadas */
+        }
+        .aprovar {
+            background-color: green; /* Verde para o botão Aprovar */
+        }
+        .reprovar {
+            background-color: red; /* Vermelho para o botão Reprovar */
+        }
+        .user-card p {
+            color: white; /* Cor do texto para branco */
+        }
+        .user-card i {
+            color: white; /* Cor dos ícones para branco */
+        }
+        .loading-message {
+            color: white; /* Cor da mensagem de carregamento */
+        }
+        .message {
+            display: none;
+            color: white; /* Cor da mensagem de sucesso/erro */
+        }
+        .success-message {
+            color: green; /* Cor verde para mensagens de sucesso */
+        }
+        .error-message {
+            color: red; /* Cor vermelha para mensagens de erro */
+        }
+        .pending-status {
+            display: flex; /* Flexbox para alinhar ícone e texto */
+            align-items: center; /* Alinhamento vertical */
+            color: orange; /* Cor para o status "Pendente" */
+        }
+        .confirmation-widget {
+            margin-top: 20px;
+            display: none; /* Oculto por padrão */
+        }
+    </style>
+</head>
+<body>
+    <h1><i class="fas fa-users icon"></i>Usuários Pendentes</h1>
+    
+    <div id="aguardando" class="section">
+        <div class="section-title">
+            Aguardando
+            <i class="fas fa-circle-notch loading-icon loading"></i> <!-- Animação de carregamento -->
+        </div>
+        <div class="loading-message">
+            <p>Aguardando carregamento...</p>
+        </div>
+    </div>
+    <div id="aprovados" class="section">
+        <div class="section-title">
+            Aprovados <i class="fas fa-check-circle approved"></i>
+        </div>
+    </div>
+
+    <div id="reprovados" class="section">
+        <div class="section-title">
+            Reprovados <i class="fas fa-times-circle rejected"></i>
+        </div>
+    </div>
+
+    <div id="message" class="message"></div>
+
+    <div class="developed-by">Desenvolvido pela Neext</div>
+
+    <div id="confirmation" class="confirmation-widget">
+        <p id="confirmation-message"></p>
+    </div>
+
+    <script>
+        // Função para obter o IP do usuário
+        function fetchUserIP() {
+            return fetch('https://api.ipify.org?format=json')
+                .then(response => response.json())
+                .then(data => data.ip)
+                .catch(error => {
+                    console.error('Erro ao obter o IP:', error);
+                    return 'IP não disponível';
+                });
+        }
+
+        // Função para carregar dados
+        fetchUserIP().then(ip => {
+            fetch('https://sheetdb.io/api/v1/13ao3npgo8as9')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erro na rede: ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(entries => {
+                    const aprovadosContainer = document.getElementById('aprovados');
+                    const reprovadosContainer = document.getElementById('reprovados');
+                    const aguardandoContainer = document.getElementById('aguardando');
+                    const loadingMessage = document.querySelector('.loading-message');
+
+                    loadingMessage.style.display = 'none';
+
+                    if (entries.length === 0) {
+                        aguardandoContainer.innerHTML += '<p>Não há usuários aguardando.</p>';
+                    } else {
+                        entries.forEach(entry => {
+                            const userCard = document.createElement('div');
+                            userCard.className = 'user-card';
+                            userCard.innerHTML = `
+                                <p><i class="fas fa-envelope icon"></i>Email: ${entry.email}</p>
+                                <p><i class="fas fa-user icon"></i>Nome: ${entry.nome}</p>
+                                <p><i class="fas fa-calendar-alt icon"></i>Idade: ${entry.idade}</p>
+                                <p><i class="fas fa-phone icon"></i>Número: ${entry.numero}</p>
+                                <p><i class="fas fa-users icon"></i>Grupo: ${entry.grupo}</p>
+                                <p><i class="fas fa-comment-dots icon"></i>Motivo: ${entry.motivo}</p>
+                                <p><i class="fas fa-id-badge icon"></i>ID: ${entry.id}</p>
+                                <p><i class="fas fa-laptop icon"></i>IP: ${ip}</p>
+                                <p class="pending-status"><i class="fas fa-circle-notch loading"></i>Status: ${entry.status || 'Pendente'}</p>
+                            `;
+                            
+                            // Verifica se o status é "pendente" ou não existe
+                            if (!entry.status || entry.status.toLowerCase() === 'pendente') {
+                                userCard.querySelector('p:last-child').classList.add('pending'); // Adiciona a classe pending
+                                userCard.innerHTML += `
+                                    <div class="button-container">
+                                        <button class="button aprovar"><i class="fas fa-check"></i> Aprovar</button>
+                                        <button class="button reprovar"><i class="fas fa-times"></i> Reprovar</button>
+                                    </div>
+                                `;
+                                userCard.querySelector('.aprovar').addEventListener('click', () => {
+                                    addStatus(entry.id, 'Aprovado', userCard, ip);
+                                });
+                                
+                                userCard.querySelector('.reprovar').addEventListener('click', () => {
+                                    addStatus(entry.id, 'Reprovado', userCard, ip);
+                                });
+                                aguardandoContainer.appendChild(userCard);
+                            } else if (entry.status.toLowerCase() === 'aprovado') {
+                                userCard.innerHTML += `<p><i class="fas fa-check status-icon approved"></i>Aprovado</p>`;
+                                aprovadosContainer.appendChild(userCard);
+                            } else if (entry.status.toLowerCase() === 'reprovado') {
+                                userCard.innerHTML += `<p><i class="fas fa-times status-icon rejected"></i>Reprovado</p>`;
+                                reprovadosContainer.appendChild(userCard);
+                            }
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao carregar dados:', error);
+                    showMessage('Erro ao carregar dados. Verifique o console para mais detalhes.', 'error');
+                });
+        });
+
+        // Função para adicionar o status ao cartão e na planilha
+        function addStatus(userId, status, userCard, ip) {
+            console.log(`Adicionando status: ${status} para ID: ${userId}`);
+            
+            const statusParagraph = document.createElement('p');
+            statusParagraph.className = 'user-status';
+            statusParagraph.textContent = status;
+            userCard.appendChild(statusParagraph);
+
+            showConfirmation(`Usuário ${status.toLowerCase()} com sucesso!`);
+            updateStatusInSheet(userId, status, ip);
+        }
+
+        // Função para mostrar o widget de confirmação
+        function showConfirmation(message) {
+            const confirmationWidget = document.getElementById('confirmation');
+            const confirmationMessage = document.getElementById('confirmation-message');
+            confirmationMessage.textContent = message;
+            confirmationWidget.style.display = 'block'; // Exibe o widget
+            setTimeout(() => {
+                confirmationWidget.style.display = 'none'; // Oculta o widget de confirmação após 3 segundos
+            }, 3000); // Tempo em milissegundos
+
+            // Atualiza o status na planilha
+            updateStatusInSheet(userId, status, ip);
+        }
+
+        // Função para atualizar o status na planilha
+        function updateStatusInSheet(userId, status, ip) {
+            fetch(`https://sheetdb.io/api/v1/13ao3npgo8as9/${userId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ status: status, ip: ip }),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro ao atualizar a planilha: ' + response.statusText);
+                }
+                console.log('Status atualizado com sucesso:', status);
+            })
+            .catch(error => {
+                console.error('Erro ao atualizar status na planilha:', error);
+                showMessage('Erro ao atualizar status. Verifique o console para mais detalhes.', 'error');
+            });
+        }
+
+        // Função para mostrar mensagens de erro ou sucesso
+        function showMessage(message, type) {
+            const messageContainer = document.getElementById('message');
+            messageContainer.textContent = message;
+            messageContainer.className = 'message ' + (type === 'error' ? 'error-message' : 'success-message');
+            messageContainer.style.display = 'block'; // Exibe a mensagem
+            setTimeout(() => {
+                messageContainer.style.display = 'none'; // Oculta a mensagem após 3 segundos
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
